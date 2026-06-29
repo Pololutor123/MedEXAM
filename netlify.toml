@@ -1,0 +1,4 @@
+[[redirects]]
+  from = "/"
+  to = "/MedExam.html"
+  status = 200
