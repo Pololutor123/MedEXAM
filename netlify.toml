@@ -1,4 +1,4 @@
 [[redirects]]
-  from = "/"
-  to = "/MedExam.html"
-  status = 200
+  from = "/MedExam.html"
+  to = "/index.html"
+  status = 301

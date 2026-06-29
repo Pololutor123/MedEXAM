@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedExam — Créateur</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+<header class="header">
+<div class="logo">MedExam <span id="header-subtitle" class="hidden">Plateforme médicale</span></div>
+<nav class="nav" id="main-nav">
+<a class="nav-btn" href="epreuves.html">🎓 Épreuves</a>
+<a class="nav-btn active" href="creer.html">✏️ Créateur</a>
+<a class="nav-btn" href="dashboard.html">📊 Résultats</a>
+</nav>
+<div class="user-info">
+<div class="user-name"><strong id="header-username"></strong><small id="header-role"></small></div>
+<button class="logout-btn" onclick="logout()">Déconnexion</button>
+</div>
+</header>
+
+<div class="page-inner" style="padding:32px 16px">
+<div class="card" id="creator-form-card">
+<h2 id="creator-title-label" style="font-size:1rem;font-weight:800;margin-bottom:16px">Nouvelle épreuve</h2>
+<div class="form-group"><label class="form-label">Titre de l'épreuve</label><input type="text" id="c-title" placeholder="ex : Cardiologie ECN 2024" /></div>
+<div class="form-group"><label class="form-label">Description / instructions (optionnel)</label><textarea id="c-desc" rows="2" placeholder="Instructions pour les candidats…"></textarea></div>
+<div class="form-group">
+<label class="form-label">⏱ Timer</label>
+<div class="flex items-center gap-8">
+<input type="number" id="c-timer" value="0" min="0" max="300" style="width:70px" />
+<span style="color:var(--text3);font-size:.82rem">minutes (0 = pas de limite)</span>
+</div>
+</div>
+<input type="hidden" id="c-editing-id" value="">
+</div>
+
+<div id="creator-dossiers" style="margin-top:16px"></div>
+
+<div class="flex gap-8 mt-16" style="flex-wrap:wrap">
+<button class="btn btn-primary" onclick="addDossier('DP')">+ Dossier Progressif</button>
+<button class="btn btn-secondary" onclick="addDossier('KFP')">+ Key Feature Problem</button>
+<button class="btn btn-teal" onclick="addDossier('QI')">+ Questions Isolées</button>
+<button class="btn btn-emerald ml-auto" id="save-btn" onclick="saveExam()" style="padding:8px 24px">Enregistrer l'épreuve</button>
+</div>
+<p id="save-msg" class="hidden" style="color:var(--emerald);font-size:.82rem;font-weight:600;margin-top:8px;text-align:right"></p>
+
+<div id="creator-exam-list" class="card" style="margin-top:24px"></div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/creator.js"></script>
+<script>
+(async function() {
+const user = await requireAuth({ adminOnly:true });
+if (!user) return;
+exams = await loadExams();
+renderCreatorExamList();
+})();
+</script>
+</body>
+</html>
