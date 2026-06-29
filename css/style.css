@@ -25,7 +25,7 @@ a{color:var(--indigo)}
 .logo{font-weight:900;font-size:1.2rem;color:var(--indigo);margin-right:24px;white-space:nowrap;letter-spacing:-.5px}
 .logo span{font-size:.75rem;color:var(--text3);font-weight:400;margin-left:8px}
 .nav{display:flex;height:56px;flex:1}
-.nav-btn{height:100%;padding:0 16px;font-weight:600;font-size:.85rem;border-bottom:2px solid transparent;color:var(--text2);background:none;transition:.15s}
+.nav-btn{display:inline-flex;align-items:center;height:100%;padding:0 16px;font-weight:600;font-size:.85rem;border-bottom:2px solid transparent;color:var(--text2);background:none;text-decoration:none;transition:.15s}
 .nav-btn:hover{color:var(--text)}
 .nav-btn.active{border-bottom-color:var(--indigo);color:var(--indigo)}
 .user-info{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}
