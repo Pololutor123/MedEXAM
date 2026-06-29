@@ -295,31 +295,17 @@ a{color:var(--indigo)}
 <h1>MedExam</h1>
 <p>Plateforme d'épreuves médicales</p>
 </div>
-<div id="auth-choose">
-<button class="auth-option" onclick="showAuthMode('student')">
-<span class="icon">🎓</span>
-<div><strong>Étudiant</strong><small>Passer une épreuve</small></div>
-</button>
-<button class="auth-option" onclick="showAuthMode('admin')">
-<span class="icon">🔐</span>
-<div><strong>Administrateur</strong><small>Créer des épreuves · Voir les résultats</small></div>
-</button>
-</div>
-<div id="auth-student" class="card hidden" style="margin-top:0">
-<button class="auth-back" onclick="showAuthMode('choose')">← Retour</button>
-<h2 style="font-size:1rem;font-weight:700;margin-bottom:14px">Créer votre profil</h2>
-<div class="form-group"><label class="form-label">Prénom</label><input type="text" id="stu-firstname" placeholder="ex : Marie" /></div>
-<div class="form-group"><label class="form-label">Nom</label><input type="text" id="stu-lastname" placeholder="ex : Dupont" /></div>
-<p id="auth-stu-err" class="auth-error hidden"></p>
-<button class="btn btn-primary btn-full btn-lg" onclick="loginStudent()" style="margin-top:8px">Accéder aux épreuves →</button>
-</div>
-<div id="auth-admin" class="card hidden" style="margin-top:0">
-<button class="auth-back" onclick="showAuthMode('choose')">← Retour</button>
-<h2 style="font-size:1rem;font-weight:700;margin-bottom:14px">Connexion administrateur</h2>
-<div class="form-group"><label class="form-label">Identifiant</label><input type="text" id="adm-login" placeholder="admin" /></div>
-<div class="form-group"><label class="form-label">Mot de passe</label><input type="password" id="adm-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginAdmin()" /></div>
-<p id="auth-adm-err" class="auth-error hidden"></p>
-<button class="btn btn-primary btn-full btn-lg" onclick="loginAdmin()" style="margin-top:8px">Se connecter →</button>
+<div id="auth-form" class="card" style="margin-top:0">
+<h2 id="auth-form-title" style="font-size:1rem;font-weight:700;margin-bottom:14px">Connexion</h2>
+<div class="form-group"><label class="form-label">Email</label><input type="email" id="auth-email" placeholder="vous@exemple.com" /></div>
+<div class="form-group"><label class="form-label">Mot de passe</label><input type="password" id="auth-pwd" placeholder="••••••••" /></div>
+<div class="form-group hidden" id="auth-pseudo-group"><label class="form-label">Pseudo</label><input type="text" id="auth-pseudo" placeholder="ex : Marie58" /></div>
+<p id="auth-err" class="auth-error hidden"></p>
+<button class="btn btn-primary btn-full btn-lg" id="auth-submit-btn" onclick="submitAuth()" style="margin-top:8px">Se connecter →</button>
+<p style="text-align:center;margin-top:14px;font-size:.82rem">
+<span id="auth-toggle-label">Pas encore de compte ?</span>
+<button class="btn-ghost btn-sm" id="auth-toggle-btn" onclick="toggleAuthMode()">Créer un compte</button>
+</p>
 </div>
 </div>
 </div>
@@ -403,12 +389,14 @@ a{color:var(--indigo)}
 
 </div><!-- #app -->
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ══════════════════════════════════════════════════════
-// CONSTANTS
+// SUPABASE
 // ══════════════════════════════════════════════════════
-const ADMIN_LOGIN = "admin";
-const ADMIN_PASSWORD = "admin1234";
+const SUPABASE_URL = "https://jofutboxnntmwzuoxbhh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_UNBOUtm920D8Uf7yJz3_kg_TDRsul4f";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ══════════════════════════════════════════════════════
 // LEVENSHTEIN
@@ -454,18 +442,37 @@ default: return 0;
 }
 
 // ══════════════════════════════════════════════════════
-// STORAGE
+// STORAGE (Supabase)
 // ══════════════════════════════════════════════════════
-const LS = {
-get: (k,d=null) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):d; } catch{return d;} },
-set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch{} }
-};
-const loadExams = () => LS.get("medexam_exams",[]);
-const saveExamsLS = v => LS.set("medexam_exams",v);
-const loadResults = () => LS.get("medexam_results",[]);
-const saveResults = v => LS.set("medexam_results",v);
-const loadUser = () => LS.get("medexam_user",null);
-const saveUser = v => LS.set("medexam_user",v);
+async function loadExams() {
+const { data, error } = await sb.from('epreuves').select('*').order('date_creation');
+if (error) { console.error(error); return []; }
+return data.map(row => ({ id:row.id, title:row.titre, description:row.description||'', timerMinutes:row.duree_minutes||0, dossiers:row.dossiers }));
+}
+async function saveExamToDB(exam) {
+const { error } = await sb.from('epreuves').upsert({
+id:exam.id, titre:exam.title, description:exam.description, duree_minutes:exam.timerMinutes,
+dossiers:exam.dossiers, cree_par:currentUser.id
+});
+return error;
+}
+async function deleteExamFromDB(id) {
+const { error } = await sb.from('epreuves').delete().eq('id', id);
+return error;
+}
+async function loadResultsForDashboard() {
+const { data, error } = await sb.from('resultats').select('*').order('date_passage', { ascending:false });
+if (error) { console.error(error); return []; }
+return data.map(r => ({ id:r.id, userId:r.utilisateur_id, pseudo:r.pseudo, examId:r.epreuve_id, examTitle:r.titre_epreuve, score:r.score, max:r.score_max, pct:r.pourcentage, date:r.date_passage }));
+}
+async function deleteResultFromDB(id) {
+const { error } = await sb.from('resultats').delete().eq('id', id);
+return error;
+}
+async function deleteAllResultsFromDB() {
+const { error } = await sb.from('resultats').delete().not('id','is',null);
+return error;
+}
 
 // ══════════════════════════════════════════════════════
 // STATE
@@ -493,49 +500,62 @@ function uid() { return Math.random().toString(36).slice(2,10)+Date.now().toStri
 // ══════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════
-function showAuthMode(mode) {
-document.getElementById('auth-choose').classList.toggle('hidden', mode!=='choose');
-document.getElementById('auth-student').classList.toggle('hidden', mode!=='student');
-document.getElementById('auth-admin').classList.toggle('hidden', mode!=='admin');
-document.getElementById('auth-stu-err').classList.add('hidden');
-document.getElementById('auth-adm-err').classList.add('hidden');
-if (mode==='student') setTimeout(()=>document.getElementById('stu-firstname').focus(),50);
-if (mode==='admin') setTimeout(()=>document.getElementById('adm-login').focus(),50);
+let authMode = 'signin'; // 'signin' | 'signup'
+
+function toggleAuthMode() {
+authMode = authMode==='signin' ? 'signup' : 'signin';
+document.getElementById('auth-pseudo-group').classList.toggle('hidden', authMode==='signin');
+document.getElementById('auth-form-title').textContent = authMode==='signin' ? 'Connexion' : 'Créer un compte';
+document.getElementById('auth-submit-btn').textContent = authMode==='signin' ? 'Se connecter →' : 'Créer mon compte →';
+document.getElementById('auth-toggle-label').textContent = authMode==='signin' ? 'Pas encore de compte ?' : 'Déjà inscrit ?';
+document.getElementById('auth-toggle-btn').textContent = authMode==='signin' ? 'Créer un compte' : 'Se connecter';
+document.getElementById('auth-err').classList.add('hidden');
 }
-function loginStudent() {
-const fn = document.getElementById('stu-firstname').value.trim();
-const ln = document.getElementById('stu-lastname').value.trim();
-if (!fn||!ln) { showErr('auth-stu-err','Prénom et nom requis.'); return; }
-const user = {role:'student',firstName:fn,lastName:ln,id:ln.toLowerCase()+'_'+fn.toLowerCase()+'_'+Date.now()};
-saveUser(user); initApp(user);
+
+async function submitAuth() {
+const email = document.getElementById('auth-email').value.trim();
+const password = document.getElementById('auth-pwd').value;
+const pseudo = document.getElementById('auth-pseudo').value.trim();
+if (!email||!password) { showErr('auth-err','Email et mot de passe requis.'); return; }
+if (authMode==='signup') {
+if (!pseudo) { showErr('auth-err','Pseudo requis.'); return; }
+const { data, error } = await sb.auth.signUp({ email, password, options:{ data:{ pseudo } } });
+if (error) { showErr('auth-err', error.message); return; }
+if (!data.session) { showErr('auth-err','Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse avant de vous connecter.'); return; }
+} else {
+const { error } = await sb.auth.signInWithPassword({ email, password });
+if (error) { showErr('auth-err','Email ou mot de passe incorrect.'); return; }
 }
-function loginAdmin() {
-const l=document.getElementById('adm-login').value;
-const p=document.getElementById('adm-pwd').value;
-if (l===ADMIN_LOGIN&&p===ADMIN_PASSWORD) {
-const user={role:'admin',firstName:'Admin',lastName:'',id:'admin'};
-saveUser(user); initApp(user);
-} else { showErr('auth-adm-err','Identifiants incorrects.'); }
 }
 function showErr(id,msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.remove('hidden'); }
-function logout() { saveUser(null); currentUser=null; location.reload(); }
+async function logout() { await sb.auth.signOut(); location.reload(); }
+
+async function loadProfileAndInit(session) {
+const { data:profile, error } = await sb.from('profils').select('*').eq('id', session.user.id).single();
+if (error || !profile) { console.error(error); return; }
+await initApp({ id:session.user.id, email:session.user.email, pseudo:profile.pseudo, role:profile.role });
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+if (session && !currentUser) loadProfileAndInit(session);
+if (!session && currentUser) { currentUser = null; location.reload(); }
+});
 
 // ══════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════
-function initApp(user) {
+async function initApp(user) {
 currentUser = user;
-exams = loadExams();
-if (exams.length===0) { exams = [DEMO_EXAM]; saveExamsLS(exams); }
+exams = await loadExams();
 document.getElementById('auth-screen').classList.add('hidden');
 document.getElementById('main-app').classList.remove('hidden');
-document.getElementById('header-username').textContent = user.firstName+(user.lastName?' '+user.lastName:'');
+document.getElementById('header-username').textContent = user.pseudo;
 document.getElementById('header-role').textContent = user.role==='admin'?'Administrateur':'Étudiant';
 if (user.role==='admin') {
 document.querySelector('[data-tab=creator]').classList.remove('hidden');
 document.querySelector('[data-tab=dashboard]').classList.remove('hidden');
 }
-document.getElementById('student-greeting').textContent = `Bonjour, ${user.firstName} 👋`;
+document.getElementById('student-greeting').textContent = `Bonjour, ${user.pseudo} 👋`;
 renderExamList();
 if (user.role==='admin') renderCreatorExamList();
 }
@@ -543,12 +563,12 @@ if (user.role==='admin') renderCreatorExamList();
 // ══════════════════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════════════════
-function switchTab(tab) {
+async function switchTab(tab) {
 document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
 document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
 document.getElementById('tab-'+tab).classList.add('active');
 document.querySelector(`[data-tab=${tab}]`).classList.add('active');
-if (tab==='dashboard') renderDashboard();
+if (tab==='dashboard') await renderDashboard();
 if (tab==='creator') renderCreatorExamList();
 }
 
@@ -861,16 +881,17 @@ renderActiveDossier();
 renderSidebar();
 }
 
-function finishSession() {
+async function finishSession() {
 clearInterval(timerInterval);
 document.getElementById('session-view').classList.add('hidden');
 const rv=document.getElementById('results-view');
 rv.classList.remove('hidden');
-rv.innerHTML=buildResultsHTML();
-saveSessionResult();
+rv.innerHTML=buildResultsHTML(null);
+const error = await saveSessionResult();
+rv.innerHTML=buildResultsHTML(error);
 }
 
-function buildResultsHTML() {
+function buildResultsHTML(saveError) {
 let total=0, max=0;
 sessionExam.dossiers.forEach((d,di)=>{
 d.questions.forEach((q,qi)=>{ total+=computeScore(q,sessionAnswers[di]?.[qi]); max++; });
@@ -878,14 +899,15 @@ d.questions.forEach((q,qi)=>{ total+=computeScore(q,sessionAnswers[di]?.[qi]); m
 const pct=max>0?Math.round(total/max*100):0;
 const color=pct>=80?'emerald':pct>=60?'indigo':pct>=40?'amber':'rose';
 const barColor=pct>=80?'var(--emerald)':pct>=60?'var(--indigo)':pct>=40?'var(--amber)':'var(--rose)';
+const savedLabel = saveError===null ? '… enregistrement en cours' : saveError ? '⚠ Échec de l\'enregistrement du résultat' : '✓ Résultat enregistré';
 
 let html=`<div class="results-hero">
-<div class="results-name">${esc(currentUser.firstName)} ${esc(currentUser.lastName)}</div>
+<div class="results-name">${esc(currentUser.pseudo)}</div>
 <div class="results-exam-title">${esc(sessionExam.title)}</div>
 <div class="results-score color-${color}">${Math.round(total*100)/100}<span>/${max}</span></div>
 <div class="results-pct color-${color}">${pct}%</div>
 <div class="results-bar-wrap"><div class="results-bar" style="width:${pct}%;background:${barColor}"></div></div>
-<div class="results-saved">✓ Résultat enregistré</div>
+<div class="results-saved">${savedLabel}</div>
 </div>`;
 
 sessionExam.dossiers.forEach((d,di)=>{
@@ -911,16 +933,17 @@ html+=`<div style="text-align:center;padding:24px 0">
 return html;
 }
 
-function saveSessionResult() {
+async function saveSessionResult() {
 const total = sessionExam.dossiers.reduce((s,d,di)=>s+d.questions.reduce((ss,q,qi)=>ss+computeScore(q,sessionAnswers[di]?.[qi]),0),0);
 const max = sessionExam.dossiers.reduce((s,d)=>s+d.questions.length,0);
 const pct = max>0?Math.round(total/max*100):0;
-const r = {
-id:uid(), userId:currentUser.id, firstName:currentUser.firstName, lastName:currentUser.lastName,
-examId:sessionExam.id, examTitle:sessionExam.title,
-score:Math.round(total*100)/100, max, pct, date:new Date().toISOString()
-};
-const results=loadResults(); saveResults([...results,r]);
+const { error } = await sb.from('resultats').insert({
+id:uid(), utilisateur_id:currentUser.id, pseudo:currentUser.pseudo,
+epreuve_id:sessionExam.id, titre_epreuve:sessionExam.title,
+score:Math.round(total*100)/100, score_max:max, pourcentage:pct
+});
+if (error) console.error(error);
+return error;
 }
 
 function backToList() {
@@ -965,7 +988,10 @@ let html=`<div class="dossier-block" id="dos-block-${d.id}">
 if(d.kind!=='QI') {
 html+=`<div class="form-group"><label class="form-label">Contexte clinique</label>
 <textarea rows="3" placeholder="Texte du cas clinique…" oninput="updateDossierField('${d.id}','context',this.value)">${esc(d.context)}</textarea>
-<input type="text" value="${esc(d.contextImageUrl)}" placeholder="URL image du contexte (optionnel)" style="margin-top:6px" oninput="updateDossierField('${d.id}','contextImageUrl',this.value)"></div>`;
+<div class="flex gap-8" style="margin-top:6px">
+<input type="text" id="ctximg-${d.id}" value="${esc(d.contextImageUrl)}" placeholder="URL image du contexte (optionnel)" oninput="updateDossierField('${d.id}','contextImageUrl',this.value)">
+<label class="btn btn-secondary btn-sm" style="cursor:pointer">📤<input type="file" accept="image/*" style="display:none" onchange="uploadDossierMedia(event,'${d.id}')"></label>
+</div></div>`;
 } else {
 html+=`<div class="qi-hint" style="margin-bottom:12px">💡 Questions librement modifiables jusqu'à la fin de l'épreuve.</div>`;
 }
@@ -998,8 +1024,10 @@ ${warn?`<span class="q-warn">⚠ Aucune réponse définie</span>`:''}
 <textarea rows="2" placeholder="Texte de la question…" oninput="updateQField('${did}','${q.id}','text',this.value)">${esc(q.text)}</textarea>
 </div>
 <div class="form-row mb-8">
-<input type="text" value="${esc(q.imageUrl)}" placeholder="URL image (optionnel)" oninput="updateQField('${did}','${q.id}','imageUrl',this.value)">
-<input type="text" value="${esc(q.videoUrl)}" placeholder="URL vidéo (optionnel)" oninput="updateQField('${did}','${q.id}','videoUrl',this.value)">
+<input type="text" id="img-${q.id}" value="${esc(q.imageUrl)}" placeholder="URL image (optionnel)" oninput="updateQField('${did}','${q.id}','imageUrl',this.value)">
+<label class="btn btn-secondary btn-sm" style="cursor:pointer">📤<input type="file" accept="image/*" style="display:none" onchange="uploadQMedia(event,'${did}','${q.id}','imageUrl')"></label>
+<input type="text" id="vid-${q.id}" value="${esc(q.videoUrl)}" placeholder="URL vidéo (optionnel)" oninput="updateQField('${did}','${q.id}','videoUrl',this.value)">
+<label class="btn btn-secondary btn-sm" style="cursor:pointer">📤<input type="file" accept="video/*" style="display:none" onchange="uploadQMedia(event,'${did}','${q.id}','videoUrl')"></label>
 </div>`;
 
 if(q.type==='QROC'){
@@ -1035,6 +1063,25 @@ const open=body.classList.toggle('open');
 tog.textContent=open?'▼':'▶';
 }
 function updateDossierField(did,field,val) { const d=getDossier(did); if(d) d[field]=val; }
+async function uploadMediaFile(file) {
+const path = `${Date.now()}_${file.name}`;
+const { error } = await sb.storage.from('medias-epreuves').upload(path, file);
+if (error) { alert('Échec upload : '+error.message); return null; }
+const { data } = sb.storage.from('medias-epreuves').getPublicUrl(path);
+return data.publicUrl;
+}
+async function uploadDossierMedia(event, did) {
+const file = event.target.files[0]; if (!file) return;
+const url = await uploadMediaFile(file); if (!url) return;
+updateDossierField(did,'contextImageUrl',url);
+const input = document.getElementById('ctximg-'+did); if (input) input.value = url;
+}
+async function uploadQMedia(event, did, qid, field) {
+const file = event.target.files[0]; if (!file) return;
+const url = await uploadMediaFile(file); if (!url) return;
+updateQField(did,qid,field,url);
+const input = document.getElementById((field==='imageUrl'?'img-':'vid-')+qid); if (input) input.value = url;
+}
 function deleteDossier(did) {
 creatorDossierState=creatorDossierState.filter(d=>d.id!==did);
 renderCreatorDossiers();
@@ -1090,7 +1137,7 @@ q.correctIndices=q.correctIndices.filter(x=>x!==pi).map(x=>x>pi?x-1:x);
 renderCreatorDossiers();
 }
 
-function saveExam() {
+async function saveExam() {
 const title=document.getElementById('c-title').value.trim();
 if(!title||creatorDossierState.length===0) {
 alert('Donnez un titre et ajoutez au moins un dossier.'); return;
@@ -1102,9 +1149,9 @@ description:document.getElementById('c-desc').value.trim(),
 timerMinutes:parseInt(document.getElementById('c-timer').value)||0,
 dossiers:JSON.parse(JSON.stringify(creatorDossierState))
 };
-const idx=exams.findIndex(e=>e.id===exam.id);
-if(idx>=0) exams[idx]=exam; else exams.push(exam);
-saveExamsLS(exams);
+const error = await saveExamToDB(exam);
+if (error) { alert('Échec de l\'enregistrement : '+error.message); return; }
+exams = await loadExams();
 // Reset
 editingExamId=null; creatorDossierState=[];
 document.getElementById('c-title').value='';
@@ -1148,9 +1195,11 @@ renderCreatorDossiers();
 document.getElementById('creator-form-card').scrollIntoView({behavior:'smooth'});
 }
 
-function deleteExam(id) {
+async function deleteExam(id) {
 if(!confirm('Supprimer cette épreuve ?')) return;
-exams=exams.filter(e=>e.id!==id); saveExamsLS(exams);
+const error = await deleteExamFromDB(id);
+if (error) { alert('Échec de la suppression : '+error.message); return; }
+exams = await loadExams();
 renderCreatorExamList(); renderExamList();
 }
 
@@ -1161,15 +1210,26 @@ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.downloa
 function importJSON(e) {
 const f=e.target.files[0]; if(!f) return;
 const r=new FileReader();
-r.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(Array.isArray(d)){ d.forEach(ex=>{ if(!exams.find(e=>e.id===ex.id)) exams.push(ex); }); saveExamsLS(exams); renderCreatorExamList(); renderExamList(); } }catch{ alert('Fichier invalide.'); } };
+r.onload=async ev=>{
+try{
+const d=JSON.parse(ev.target.result);
+if(Array.isArray(d)){
+for (const ex of d) {
+if (!exams.find(existing=>existing.id===ex.id)) await saveExamToDB({ id:ex.id||uid(), title:ex.title, description:ex.description, timerMinutes:ex.timerMinutes, dossiers:ex.dossiers });
+}
+exams = await loadExams();
+renderCreatorExamList(); renderExamList();
+}
+}catch{ alert('Fichier invalide.'); }
+};
 r.readAsText(f); e.target.value='';
 }
 
 // ══════════════════════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════════════════════
-function renderDashboard() {
-const results=loadResults();
+async function renderDashboard() {
+const results=await loadResultsForDashboard();
 document.getElementById('dash-count').textContent=results.length+' résultat(s) enregistré(s)';
 const el=document.getElementById('dashboard-content');
 if(!results.length){ el.innerHTML=`<div class="empty-state"><div class="icon">📊</div><p>Aucun résultat enregistré.</p><p style="font-size:.82rem;margin-top:4px">Les scores apparaîtront ici après les premières épreuves.</p></div>`; return; }
@@ -1187,7 +1247,7 @@ ${ranked.map((r,i)=>{
 const color=r.pct>=80?'var(--emerald)':r.pct>=60?'var(--indigo)':r.pct>=40?'var(--amber)':'var(--rose)';
 return `<div class="rank-row${i<3?' top':''}">
 <span class="rank-medal">${medals[i]||i+1+'.'}</span>
-<div class="rank-info"><div class="rank-name">${esc(r.firstName)} ${esc(r.lastName)}</div><div class="rank-date">${new Date(r.date).toLocaleString('fr-FR')}</div></div>
+<div class="rank-info"><div class="rank-name">${esc(r.pseudo)}</div><div class="rank-date">${new Date(r.date).toLocaleString('fr-FR')}</div></div>
 <div class="rank-score-wrap">
 <div class="rank-pct" style="color:${color}">${r.pct}%</div>
 <div class="rank-pts">${r.score}/${r.max}</div>
@@ -1200,57 +1260,29 @@ return `<div class="rank-row${i<3?' top':''}">
 }).join('');
 }
 
-function deleteResult(id) {
-const r=loadResults().filter(r=>r.id!==id); saveResults(r); renderDashboard();
+async function deleteResult(id) {
+await deleteResultFromDB(id);
+await renderDashboard();
 }
-function clearAllResults() {
+async function clearAllResults() {
 if(!confirm('Supprimer TOUS les résultats ?')) return;
-saveResults([]); renderDashboard();
+await deleteAllResultsFromDB();
+await renderDashboard();
 }
 
-function exportCSV() {
-const results=loadResults();
-const rows=[['Prénom','Nom','Épreuve','Score','Sur','Pourcentage','Date'],...results.map(r=>[r.firstName,r.lastName,r.examTitle,r.score,r.max,r.pct+'%',new Date(r.date).toLocaleString('fr-FR')])];
+async function exportCSV() {
+const results=await loadResultsForDashboard();
+const rows=[['Pseudo','Épreuve','Score','Sur','Pourcentage','Date'],...results.map(r=>[r.pseudo,r.examTitle,r.score,r.max,r.pct+'%',new Date(r.date).toLocaleString('fr-FR')])];
 const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
 const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
 const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='resultats_medexam.csv'; a.click();
 }
 
 // ══════════════════════════════════════════════════════
-// DEMO DATA
-// ══════════════════════════════════════════════════════
-const DEMO_EXAM = {
-id:"demo",title:"Démonstration — Cardiologie",description:"Épreuve exemple avec toutes les modalités et un timer de 5 min.",timerMinutes:5,
-dossiers:[
-{id:"dp1",kind:"DP",title:"Dossier 1 — Douleur thoracique",
-context:"M. Martin, 58 ans, consulte aux urgences pour une douleur thoracique rétrosternale constrictive survenue au repos irradiant dans le bras gauche depuis 2h. Diabétique et hypertendu.",contextImageUrl:"",
-questions:[
-{id:"q1",type:"QCM",text:"Quels éléments du tableau clinique orientent vers un SCA ?",imageUrl:"",videoUrl:"",propositions:["Douleur rétrosternale constrictive","Irradiation bras gauche","Survenue au repos","Durée > 20 min","Contexte vasculaire (diabète, HTA)"],correctIndices:[0,1,2,3,4],correctTexts:[],qrpExpectedCount:2},
-{id:"q2",type:"QRU",text:"Quel examen est à réaliser en urgence absolue en première intention ?",imageUrl:"",videoUrl:"",propositions:["Radiographie thoracique","ECG 12 dérivations","Échocardiographie","Scanner thoracique","Bilan biologique seul"],correctIndices:[1],correctTexts:[],qrpExpectedCount:1},
-{id:"q3",type:"QROC",text:"Quel score de risque cardiovasculaire à 10 ans est utilisé en Europe ?",imageUrl:"",videoUrl:"",propositions:[],correctIndices:[],correctTexts:["SCORE","score"],qrpExpectedCount:1},
-]},
-{id:"kfp1",kind:"KFP",title:"KFP — Traitement SCA ST+",context:"ECG : sus-décalage du segment ST en V1-V4. Le diagnostic de SCA ST+ est posé.",contextImageUrl:"",
-questions:[
-{id:"q4",type:"QRP",text:"Parmi les mesures suivantes, lesquelles sont indiquées dans les premières heures ? (6 réponses attendues sur 12)",imageUrl:"",videoUrl:"",
-propositions:["Aspirine 250mg","Héparine NF IV","Inhibiteur P2Y12 (ticagrélor/prasugrel)","Bêtabloquant IV systématique","Coronarographie en urgence (< 120 min)","Fibrinolyse si délai > 120 min","Inhibiteur calcique en urgence","Statine à forte dose","O2 si SpO2 < 90%","Morphine si douleur persistante","Défibrillateur à portée","IEC systématique dès H1"],
-correctIndices:[0,1,2,4,5,8],correctTexts:[],qrpExpectedCount:6},
-]},
-{id:"qi1",kind:"QI",title:"Questions isolées — Pharmacologie",context:"",contextImageUrl:"",
-questions:[
-{id:"q5",type:"QRU",text:"À quelle heure après le début de la douleur dose-t-on la troponine pour exclure un SCA selon les recommandations ESC ?",imageUrl:"",videoUrl:"",propositions:["1h","3h","6h","12h","24h"],correctIndices:[2],correctTexts:[],qrpExpectedCount:1},
-{id:"q6",type:"QROC",text:"Quel est l'antidote de l'héparine non fractionnée ?",imageUrl:"",videoUrl:"",propositions:[],correctIndices:[],correctTexts:["sulfate de protamine","protamine","sulfate de protammine"],qrpExpectedCount:1},
-]},
-]
-};
-
-// ══════════════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════════════
 (function() {
-const user = loadUser();
-if (user) { initApp(user); }
-document.getElementById('stu-lastname').addEventListener('keydown', e=>{ if(e.key==='Enter') loginStudent(); });
-document.getElementById('stu-firstname').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('stu-lastname').focus(); });
+document.getElementById('auth-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') submitAuth(); });
 })();
 </script>
 </body>
