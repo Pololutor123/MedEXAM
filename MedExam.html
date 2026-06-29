@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedExam — Plateforme d'épreuves médicales</title>
+<style>
+/* ── RESET & BASE ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--indigo:#4f46e5;--indigo-d:#3730a3;--indigo-l:#eef2ff;
+--teal:#0d9488;--teal-l:#f0fdfa;
+--purple:#7c3aed;--purple-l:#f5f3ff;
+--emerald:#059669;--emerald-l:#ecfdf5;
+--amber:#d97706;--amber-l:#fffbeb;
+--rose:#e11d48;--rose-l:#fff1f2;
+--gray:#6b7280;--gray-l:#f9fafb;--gray-b:#e5e7eb;
+--white:#fff;--text:#111827;--text2:#4b5563;--text3:#9ca3af;
+--radius:12px;--shadow:0 1px 4px rgba(0,0,0,.08);
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f3f4f6;color:var(--text);font-size:14px;line-height:1.5}
+button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;outline:none}
+input,textarea,select{font-family:inherit;font-size:inherit;outline:none;border:1px solid var(--gray-b);border-radius:8px;padding:8px 12px;width:100%;background:var(--white);color:var(--text)}
+input:focus,textarea:focus,select:focus{border-color:var(--indigo);box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+textarea{resize:vertical}
+img,video{max-width:100%;border-radius:8px}
+a{color:var(--indigo)}
+
+/* ── LAYOUT ── */
+#app{min-height:100vh}
+.header{background:var(--white);border-bottom:1px solid var(--gray-b);position:sticky;top:0;z-index:100;height:56px;display:flex;align-items:center;padding:0 20px;gap:0;box-shadow:var(--shadow)}
+.logo{font-weight:900;font-size:1.2rem;color:var(--indigo);margin-right:24px;white-space:nowrap;letter-spacing:-.5px}
+.logo span{font-size:.75rem;color:var(--text3);font-weight:400;margin-left:8px}
+.nav{display:flex;height:56px;flex:1}
+.nav-btn{height:100%;padding:0 16px;font-weight:600;font-size:.85rem;border-bottom:2px solid transparent;color:var(--text2);background:none;transition:.15s}
+.nav-btn:hover{color:var(--text)}
+.nav-btn.active{border-bottom-color:var(--indigo);color:var(--indigo)}
+.user-info{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}
+.user-name{text-align:right;line-height:1.2}
+.user-name strong{font-size:.8rem;display:block}
+.user-name small{font-size:.72rem;color:var(--text3)}
+.logout-btn{font-size:.75rem;color:var(--text3);background:none;padding:4px 8px;border-radius:6px;transition:.15s}
+.logout-btn:hover{color:var(--rose);background:var(--rose-l)}
+
+.page{display:none;padding:32px 16px}
+.page.active{display:block}
+.page-inner{max-width:720px;margin:0 auto}
+.page-inner-wide{max-width:960px;margin:0 auto}
+
+/* ── CARDS ── */
+.card{background:var(--white);border-radius:16px;border:1px solid var(--gray-b);padding:24px;box-shadow:var(--shadow)}
+.card+.card,.card+.dossier-block,.dossier-block+.card,.dossier-block+.dossier-block{margin-top:16px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;font-weight:600;font-size:.85rem;transition:.15s;white-space:nowrap;border:none}
+.btn-sm{padding:5px 12px;font-size:.78rem}
+.btn-lg{padding:12px 24px;font-size:.95rem}
+.btn-full{width:100%}
+.btn-primary{background:var(--indigo);color:#fff}.btn-primary:hover{background:var(--indigo-d)}
+.btn-secondary{background:var(--white);color:var(--text2);border:1px solid var(--gray-b)}.btn-secondary:hover{background:var(--gray-l)}
+.btn-danger{background:var(--rose);color:#fff}.btn-danger:hover{background:#be123c}
+.btn-emerald{background:var(--emerald);color:#fff}.btn-emerald:hover{background:#047857}
+.btn-teal{background:var(--teal);color:#fff}.btn-teal:hover{background:#0f766e}
+.btn-ghost{background:none;color:var(--indigo)}.btn-ghost:hover{background:var(--indigo-l)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-purple{background:#ede9fe;color:#5b21b6}
+.badge-amber{background:#fef3c7;color:#92400e}
+.badge-teal{background:#ccfbf1;color:#115e59}
+.badge-indigo{background:#e0e7ff;color:#3730a3}
+.badge-gray{background:#f3f4f6;color:#374151}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.form-row{display:flex;gap:10px}
+.form-row>*{flex:1}
+.warn-border{border-color:var(--amber)!important}
+
+/* ── AUTH SCREEN ── */
+#auth-screen{min-height:100vh;background:linear-gradient(135deg,#eef2ff,#fff);display:flex;align-items:center;justify-content:center;padding:16px}
+.auth-box{width:100%;max-width:380px}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-logo h1{font-size:2rem;font-weight:900;color:var(--indigo);letter-spacing:-1px}
+.auth-logo p{color:var(--text3);font-size:.85rem;margin-top:4px}
+.auth-option{display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:2px solid var(--gray-b);cursor:pointer;transition:.15s;width:100%;background:var(--white);text-align:left;margin-bottom:10px}
+.auth-option:hover{border-color:var(--indigo);background:var(--indigo-l)}
+.auth-option .icon{font-size:1.8rem}
+.auth-option strong{display:block;font-size:.9rem;color:var(--text)}
+.auth-option small{color:var(--text3);font-size:.78rem}
+.auth-back{font-size:.78rem;color:var(--text3);background:none;margin-bottom:12px;padding:0}
+.auth-back:hover{color:var(--indigo)}
+.auth-error{color:var(--rose);font-size:.8rem;margin-top:6px}
+
+/* ── DOSSIER BLOCKS (creator) ── */
+.dossier-block{border-radius:16px;overflow:hidden;border:2px solid var(--gray-b)}
+.dossier-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none}
+.dossier-header.dp{background:linear-gradient(90deg,#4338ca,#4f46e5)}
+.dossier-header.kfp{background:linear-gradient(90deg,#6d28d9,#7c3aed)}
+.dossier-header.qi{background:linear-gradient(90deg,#0f766e,#0d9488)}
+.dossier-header input{flex:1;background:rgba(255,255,255,.2);border:none;border-radius:6px;padding:5px 10px;color:#fff;font-weight:600;font-size:.85rem}
+.dossier-header input::placeholder{color:rgba(255,255,255,.6)}
+.dossier-header input:focus{outline:none;box-shadow:0 0 0 2px rgba(255,255,255,.5)}
+.dossier-kind-label{font-size:.7rem;font-weight:900;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
+.dossier-count{font-size:.72rem;color:rgba(255,255,255,.7);white-space:nowrap}
+.dossier-toggle{color:rgba(255,255,255,.7);font-size:.9rem}
+.dossier-del{color:rgba(255,255,255,.5);font-size:1.1rem;line-height:1;background:none}
+.dossier-del:hover{color:#fff}
+.dossier-body{padding:16px;background:#fafafa;display:none}
+.dossier-body.open{display:block}
+
+/* ── QUESTION EDITOR ── */
+.q-editor{background:var(--white);border:1px solid var(--gray-b);border-radius:10px;padding:14px;margin-bottom:10px}
+.q-editor-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.q-num{font-size:.7rem;font-weight:900;color:var(--text3);text-transform:uppercase;letter-spacing:.1em}
+.q-type-sel{font-size:.78rem;border-radius:6px;padding:4px 8px;font-weight:600;width:auto;background:#f3f4f6}
+.q-del{margin-left:auto;color:var(--text3);background:none;font-size:1.1rem;line-height:1}
+.q-del:hover{color:var(--rose)}
+.q-warn{font-size:.72rem;color:var(--amber);font-weight:600;margin-left:auto}
+.prop-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.prop-row input[type=text]{flex:1}
+.prop-check{width:16px;height:16px;flex-shrink:0;accent-color:var(--indigo)}
+.prop-del{color:var(--text3);background:none;font-size:.9rem}
+.prop-del:hover{color:var(--rose)}
+.qrp-count{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--text2);margin-left:auto}
+.qrp-count input{width:52px}
+.section-label{font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;margin-top:10px;display:block}
+.qroc-hint{font-size:.75rem;color:var(--text3);margin-bottom:6px}
+.add-prop-btn{margin-top:4px}
+
+/* ── TIMER ── */
+.timer{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;font-weight:700;font-size:.85rem;background:var(--indigo-l);color:var(--indigo);transition:.3s}
+.timer.warning{background:var(--amber-l);color:var(--amber)}
+.timer.urgent{background:var(--rose-l);color:var(--rose);animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ── PROGRESS ── */
+.progress-wrap{flex:1}
+.progress-labels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--text3);margin-bottom:4px}
+.progress-bar-bg{width:100%;background:var(--gray-b);border-radius:99px;height:8px}
+.progress-bar-fill{height:8px;border-radius:99px;background:var(--indigo);transition:width .4s}
+
+/* ── SESSION LAYOUT ── */
+.session-layout{display:flex;height:calc(100vh - 56px)}
+.session-sidebar{width:200px;flex-shrink:0;background:var(--white);border-right:1px solid var(--gray-b);overflow-y:auto;padding:12px}
+.sidebar-title{font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;padding:0 6px;margin-bottom:8px}
+.sidebar-btn{width:100%;text-align:left;padding:10px 10px;border-radius:10px;background:none;color:var(--text2);font-size:.8rem;margin-bottom:4px;transition:.15s;border:none}
+.sidebar-btn:hover{background:var(--gray-l)}
+.sidebar-btn.active{background:var(--indigo);color:#fff}
+.sidebar-kind{font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:4px;font-family:monospace;margin-bottom:4px;display:inline-block}
+.sidebar-btn.active .sidebar-kind{background:rgba(255,255,255,.2);color:#fff}
+.sidebar-kind.dp{background:var(--indigo-l);color:var(--indigo)}
+.sidebar-kind.kfp{background:var(--purple-l);color:var(--purple)}
+.sidebar-kind.qi{background:var(--teal-l);color:var(--teal)}
+.sidebar-dos-title{font-size:.75rem;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;margin-top:2px}
+.sidebar-mini-progress{display:flex;align-items:center;gap:4px;margin-top:5px}
+.sidebar-mini-bar{flex:1;background:rgba(255,255,255,.3);border-radius:99px;height:3px}
+.sidebar-btn:not(.active) .sidebar-mini-bar{background:#e5e7eb}
+.sidebar-mini-fill{height:3px;border-radius:99px;background:rgba(255,255,255,.8);transition:width .3s}
+.sidebar-btn:not(.active) .sidebar-mini-fill{background:var(--indigo)}
+.sidebar-mini-count{font-size:.68rem;opacity:.7}
+.sidebar-check{margin-left:auto;color:#34d399;font-size:.85rem}
+
+.session-main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.session-topbar{position:sticky;top:0;background:var(--white);border-bottom:1px solid var(--gray-b);padding:10px 20px;display:flex;align-items:center;gap:14px;z-index:10}
+.session-content{max-width:700px;margin:0 auto;width:100%;padding:24px 20px}
+
+/* ── DOSSIER (student) ── */
+.dos-card{background:var(--white);border-radius:16px;overflow:hidden;border:1px solid var(--gray-b);box-shadow:var(--shadow)}
+.dos-header{display:flex;align-items:center;gap:10px;padding:12px 18px}
+.dos-header.dp{background:linear-gradient(90deg,#4338ca,#4f46e5)}
+.dos-header.kfp{background:linear-gradient(90deg,#6d28d9,#7c3aed)}
+.dos-header.qi{background:linear-gradient(90deg,#0f766e,#0d9488)}
+.dos-kind{font-size:.7rem;font-weight:900;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.1em}
+.dos-title-text{color:#fff;font-weight:700;font-size:.9rem;flex:1}
+.dos-qcount{font-size:.72rem;color:rgba(255,255,255,.7)}
+.dos-body{padding:20px}
+
+/* ── CONTEXT BOX ── */
+.context-box{background:var(--amber-l);border:1px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:16px}
+.context-label{font-size:.7rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.context-text{font-size:.88rem;color:var(--text);white-space:pre-wrap;line-height:1.6}
+
+/* ── QUESTION (student) ── */
+.q-student{padding:14px;border-radius:12px;border:2px solid transparent;transition:.2s;margin-bottom:8px}
+.q-student.locked{border-color:var(--gray-b);background:#fafafa}
+.q-student-head{display:flex;gap:10px;align-items:flex-start}
+.q-num-circle{width:26px;height:26px;background:var(--indigo);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px}
+.q-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.q-text{font-size:.9rem;font-weight:500;color:var(--text);line-height:1.5}
+.q-body{margin-left:36px;margin-top:10px}
+.q-lock-label{font-size:.7rem;color:var(--text3);margin-left:auto}
+
+/* ── PROPOSITIONS ── */
+.prop-option{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:2px solid var(--gray-b);cursor:pointer;transition:.15s;margin-bottom:6px;user-select:none}
+.prop-option:hover:not(.locked-opt){border-color:var(--indigo);background:var(--indigo-l)}
+.prop-option.selected{border-color:var(--indigo);background:var(--indigo-l)}
+.prop-option.locked-opt{cursor:default}
+.prop-option.res-correct-chosen{border-color:var(--emerald);background:var(--emerald-l)}
+.prop-option.res-correct-missing{border-color:#6ee7b7;background:var(--emerald-l);opacity:.7}
+.prop-option.res-wrong-chosen{border-color:var(--rose);background:var(--rose-l)}
+.prop-option.res-neutral{border-color:var(--gray-b);opacity:.5}
+.prop-box{width:18px;height:18px;border-radius:4px;border:2px solid var(--gray-b);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s;background:var(--white)}
+.prop-box.radio{border-radius:50%}
+.prop-box.checked{background:var(--indigo);border-color:var(--indigo)}
+.prop-box.checked::after{content:"✓";color:#fff;font-size:.65rem;font-weight:700}
+.prop-label{font-size:.88rem;color:var(--text);flex:1}
+.prop-option.selected .prop-label{font-weight:500;color:#3730a3}
+.prop-correct-mark{margin-left:auto;font-size:.75rem;color:var(--emerald);font-weight:700}
+
+/* ── QROC INPUT ── */
+.qroc-input{width:100%;padding:10px 14px;border:2px solid var(--gray-b);border-radius:10px;font-size:.9rem;transition:.2s}
+.qroc-input:focus{border-color:var(--indigo)}
+.qroc-input.res-ok{border-color:var(--emerald);background:var(--emerald-l)}
+.qroc-input.res-wrong{border-color:var(--rose);background:var(--rose-l)}
+.qroc-input:disabled{background:#f3f4f6;color:var(--text2)}
+.qroc-expected{font-size:.75rem;color:var(--rose);margin-top:4px}
+.qroc-ok-msg{font-size:.75rem;color:var(--emerald);margin-top:4px}
+
+/* ── SCORE FEEDBACK ── */
+.q-score{font-size:.82rem;font-weight:700;margin-top:8px;margin-left:36px}
+.q-score.perfect{color:var(--emerald)}
+.q-score.partial{color:var(--amber)}
+.q-score.zero{color:var(--rose)}
+
+/* ── VALIDATED MINI ── */
+.q-mini{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:.78rem}
+.q-mini.ok{background:var(--emerald-l);color:#065f46}
+.q-mini.partial{background:var(--amber-l);color:#92400e}
+.q-mini.zero{background:var(--rose-l);color:#be123c}
+.q-mini-score{font-weight:700;margin-left:auto;white-space:nowrap}
+
+/* ── DONE BANNER ── */
+.done-banner{background:var(--indigo-l);border-radius:10px;padding:12px;text-align:center;color:var(--indigo);font-weight:600;font-size:.88rem}
+.qi-hint{background:var(--teal-l);border:1px solid #99f6e4;border-radius:10px;padding:10px 14px;font-size:.78rem;color:var(--teal);margin-bottom:14px}
+
+/* ── RESULTS ── */
+.results-hero{text-align:center;padding:28px;background:var(--white);border-radius:16px;border:2px solid var(--indigo-l);box-shadow:var(--shadow);margin-bottom:16px}
+.results-name{font-size:.8rem;color:var(--text3);margin-bottom:4px}
+.results-exam-title{font-size:1.1rem;font-weight:900;color:var(--text);margin-bottom:12px}
+.results-score{font-size:3rem;font-weight:900;line-height:1}
+.results-score span{font-size:1.5rem;color:var(--text3);font-weight:400}
+.results-pct{font-size:1.8rem;font-weight:700;margin:4px 0}
+.results-bar-wrap{width:100%;background:#e5e7eb;border-radius:99px;height:10px;margin-top:10px}
+.results-bar{height:10px;border-radius:99px;transition:width .6s}
+.results-saved{font-size:.75rem;color:var(--emerald);font-weight:600;margin-top:8px}
+.color-emerald{color:var(--emerald)}
+.color-indigo{color:var(--indigo)}
+.color-amber{color:var(--amber)}
+.color-rose{color:var(--rose)}
+.bg-emerald{background:var(--emerald)}
+.bg-indigo{background:var(--indigo)}
+.bg-amber{background:var(--amber)}
+.bg-rose-col{background:var(--rose)}
+/* ── ADMIN DASHBOARD ── */
+.ranking-card{background:var(--white);border-radius:16px;overflow:hidden;border:1px solid var(--gray-b);margin-bottom:16px;box-shadow:var(--shadow)}
+.ranking-header{background:linear-gradient(90deg,#4338ca,#4f46e5);padding:12px 18px;display:flex;justify-content:space-between;align-items:center}
+.ranking-header h3{color:#fff;font-weight:700;font-size:.9rem}
+.ranking-header small{color:rgba(255,255,255,.7);font-size:.75rem}
+.rank-row{display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid #f3f4f6;transition:.15s}
+.rank-row:first-child{border-top:none}
+.rank-row.top{background:rgba(251,191,36,.05)}
+.rank-medal{font-size:1.2rem;width:28px;text-align:center;flex-shrink:0}
+.rank-info{flex:1;min-width:0}
+.rank-name{font-size:.88rem;font-weight:600;color:var(--text)}
+.rank-date{font-size:.72rem;color:var(--text3)}
+.rank-score-wrap{text-align:right;flex-shrink:0}
+.rank-pct{font-size:1rem;font-weight:900}
+.rank-pts{font-size:.72rem;color:var(--text3)}
+.rank-bar-wrap{width:70px;background:#e5e7eb;border-radius:99px;height:5px;margin-top:3px}
+.rank-bar{height:5px;border-radius:99px;transition:width .4s}
+.rank-del{color:var(--text3);background:none;font-size:.9rem}
+.rank-del:hover{color:var(--rose)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state .icon{font-size:3rem;margin-bottom:12px}
+
+/* ── UTILS ── */
+.flex{display:flex}.items-center{align-items:center}.gap-8{gap:8px}.gap-12{gap:12px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.ml-auto{margin-left:auto}
+.text-sm{font-size:.82rem}.text-xs{font-size:.75rem}.text-gray{color:var(--text3)}.fw-bold{font-weight:700}.fw-900{font-weight:900}
+.hidden{display:none!important}
+.divider{height:1px;background:var(--gray-b);margin:16px 0}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── AUTH ── -->
+<div id="auth-screen">
+<div class="auth-box">
+<div class="auth-logo">
+<h1>MedExam</h1>
+<p>Plateforme d'épreuves médicales</p>
+</div>
+<div id="auth-choose">
+<button class="auth-option" onclick="showAuthMode('student')">
+<span class="icon">🎓</span>
+<div><strong>Étudiant</strong><small>Passer une épreuve</small></div>
+</button>
+<button class="auth-option" onclick="showAuthMode('admin')">
+<span class="icon">🔐</span>
+<div><strong>Administrateur</strong><small>Créer des épreuves · Voir les résultats</small></div>
+</button>
+</div>
+<div id="auth-student" class="card hidden" style="margin-top:0">
+<button class="auth-back" onclick="showAuthMode('choose')">← Retour</button>
+<h2 style="font-size:1rem;font-weight:700;margin-bottom:14px">Créer votre profil</h2>
+<div class="form-group"><label class="form-label">Prénom</label><input type="text" id="stu-firstname" placeholder="ex : Marie" /></div>
+<div class="form-group"><label class="form-label">Nom</label><input type="text" id="stu-lastname" placeholder="ex : Dupont" /></div>
+<p id="auth-stu-err" class="auth-error hidden"></p>
+<button class="btn btn-primary btn-full btn-lg" onclick="loginStudent()" style="margin-top:8px">Accéder aux épreuves →</button>
+</div>
+<div id="auth-admin" class="card hidden" style="margin-top:0">
+<button class="auth-back" onclick="showAuthMode('choose')">← Retour</button>
+<h2 style="font-size:1rem;font-weight:700;margin-bottom:14px">Connexion administrateur</h2>
+<div class="form-group"><label class="form-label">Identifiant</label><input type="text" id="adm-login" placeholder="admin" /></div>
+<div class="form-group"><label class="form-label">Mot de passe</label><input type="password" id="adm-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginAdmin()" /></div>
+<p id="auth-adm-err" class="auth-error hidden"></p>
+<button class="btn btn-primary btn-full btn-lg" onclick="loginAdmin()" style="margin-top:8px">Se connecter →</button>
+</div>
+</div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="main-app" class="hidden">
+<header class="header">
+<div class="logo">MedExam <span id="header-subtitle" class="hidden">Plateforme médicale</span></div>
+<nav class="nav" id="main-nav">
+<button class="nav-btn active" data-tab="student" onclick="switchTab('student')">🎓 Épreuves</button>
+<button class="nav-btn hidden" data-tab="creator" onclick="switchTab('creator')">✏️ Créateur</button>
+<button class="nav-btn hidden" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Résultats</button>
+</nav>
+<div class="user-info">
+<div class="user-name"><strong id="header-username"></strong><small id="header-role"></small></div>
+<button class="logout-btn" onclick="logout()">Déconnexion</button>
+</div>
+</header>
+
+<!-- STUDENT TAB -->
+<div id="tab-student" class="page active" style="padding:0">
+<div id="exam-list-view" class="page-inner" style="padding:32px 16px">
+<div style="margin-bottom:20px">
+<h2 id="student-greeting" style="font-size:1.1rem;font-weight:800"></h2>
+<p style="color:var(--text3);font-size:.85rem;margin-top:2px">Choisissez une épreuve pour commencer.</p>
+</div>
+<div id="exam-list"></div>
+</div>
+<div id="session-view" class="hidden">
+<!-- filled by JS -->
+</div>
+<div id="results-view" class="hidden page-inner" style="padding:32px 16px"></div>
+</div>
+
+<!-- CREATOR TAB -->
+<div id="tab-creator" class="page">
+<div class="page-inner">
+<div class="card" id="creator-form-card">
+<h2 id="creator-title-label" style="font-size:1rem;font-weight:800;margin-bottom:16px">Nouvelle épreuve</h2>
+<div class="form-group"><label class="form-label">Titre de l'épreuve</label><input type="text" id="c-title" placeholder="ex : Cardiologie ECN 2024" /></div>
+<div class="form-group"><label class="form-label">Description / instructions (optionnel)</label><textarea id="c-desc" rows="2" placeholder="Instructions pour les candidats…"></textarea></div>
+<div class="form-group">
+<label class="form-label">⏱ Timer</label>
+<div class="flex items-center gap-8">
+<input type="number" id="c-timer" value="0" min="0" max="300" style="width:70px" />
+<span style="color:var(--text3);font-size:.82rem">minutes (0 = pas de limite)</span>
+</div>
+</div>
+<input type="hidden" id="c-editing-id" value="">
+</div>
+
+<div id="creator-dossiers" style="margin-top:16px"></div>
+
+<div class="flex gap-8 mt-16" style="flex-wrap:wrap">
+<button class="btn btn-primary" onclick="addDossier('DP')">+ Dossier Progressif</button>
+<button class="btn btn-secondary" onclick="addDossier('KFP')">+ Key Feature Problem</button>
+<button class="btn btn-teal" onclick="addDossier('QI')">+ Questions Isolées</button>
+<button class="btn btn-emerald ml-auto" id="save-btn" onclick="saveExam()" style="padding:8px 24px">Enregistrer l'épreuve</button>
+</div>
+<p id="save-msg" class="hidden" style="color:var(--emerald);font-size:.82rem;font-weight:600;margin-top:8px;text-align:right"></p>
+
+<div id="creator-exam-list" class="card" style="margin-top:24px"></div>
+</div>
+</div>
+
+<!-- DASHBOARD TAB -->
+<div id="tab-dashboard" class="page">
+<div class="page-inner-wide" style="padding:32px 16px">
+<div class="flex items-center gap-12 mb-12" style="flex-wrap:wrap">
+<div>
+<h2 style="font-size:1.1rem;font-weight:800">Tableau de bord</h2>
+<p id="dash-count" style="color:var(--text3);font-size:.82rem"></p>
+</div>
+<button class="btn btn-secondary btn-sm ml-auto" onclick="exportCSV()">⬇ Exporter CSV</button>
+<button class="btn btn-danger btn-sm" onclick="clearAllResults()">🗑 Vider tous les résultats</button>
+</div>
+<div id="dashboard-content"></div>
+</div>
+</div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════
+const ADMIN_LOGIN = "admin";
+const ADMIN_PASSWORD = "admin1234";
+
+// ══════════════════════════════════════════════════════
+// LEVENSHTEIN
+// ══════════════════════════════════════════════════════
+function levenshtein(a, b) {
+const m = a.length, n = b.length;
+const dp = Array.from({length: m+1}, (_,i) => Array.from({length: n+1}, (_,j) => i===0?j:j===0?i:0));
+for (let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+return dp[m][n];
+}
+
+// ══════════════════════════════════════════════════════
+// SCORING
+// ══════════════════════════════════════════════════════
+function scoreQCM(correct, chosen) {
+if (!chosen || chosen.length===0) return 0;
+const errors = correct.filter(i=>!chosen.includes(i)).length + chosen.filter(i=>!correct.includes(i)).length;
+if (errors===0) return 1; if (errors===1) return 0.5; if (errors===2) return 0.2; return 0;
+}
+function scoreQRU(correct, chosen) {
+if (!chosen || chosen.length===0) return 0;
+return chosen[0]===correct[0] ? 1 : 0;
+}
+function scoreQRP(expectedTrue, chosen) {
+if (!chosen || chosen.length===0) return 0;
+const good = chosen.filter(i=>expectedTrue.includes(i)).length;
+return expectedTrue.length>0 ? good/expectedTrue.length : 0;
+}
+function scoreQROC(correctAnswers, given) {
+if (!given || given.trim()==="") return 0;
+const g = given.trim().toLowerCase();
+return correctAnswers.some(a => levenshtein(g, a.trim().toLowerCase()) <= 2) ? 1 : 0;
+}
+function computeScore(q, answer) {
+switch(q.type) {
+case "QCM": return scoreQCM(q.correctIndices, answer||[]);
+case "QRU": return scoreQRU(q.correctIndices, answer||[]);
+case "QRP": return scoreQRP(q.correctIndices, answer||[]);
+case "QROC": return scoreQROC(q.correctTexts||[], answer||"");
+default: return 0;
+}
+}
+
+// ══════════════════════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════════════════════
+const LS = {
+get: (k,d=null) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):d; } catch{return d;} },
+set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch{} }
+};
+const loadExams = () => LS.get("medexam_exams",[]);
+const saveExamsLS = v => LS.set("medexam_exams",v);
+const loadResults = () => LS.get("medexam_results",[]);
+const saveResults = v => LS.set("medexam_results",v);
+const loadUser = () => LS.get("medexam_user",null);
+const saveUser = v => LS.set("medexam_user",v);
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let currentUser = null;
+let exams = [];
+let creatorDossiers = []; // working dossiers in creator
+let editingExamId = null;
+// Session state
+let sessionExam = null;
+let sessionAnswers = {}; // {di: {qi: answer}}
+let sessionRevealedIdx = {}; // {di: revealedIdx}
+let sessionSubmittedMap = {}; // {di: {qi: true}}
+let sessionDoneMap = {}; // {di: true}
+let sessionActiveDossier = 0;
+let sessionForceSubmit = false;
+let timerInterval = null;
+let timerRemaining = 0;
+
+// ══════════════════════════════════════════════════════
+// ID GENERATOR
+// ══════════════════════════════════════════════════════
+function uid() { return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+
+// ══════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════
+function showAuthMode(mode) {
+document.getElementById('auth-choose').classList.toggle('hidden', mode!=='choose');
+document.getElementById('auth-student').classList.toggle('hidden', mode!=='student');
+document.getElementById('auth-admin').classList.toggle('hidden', mode!=='admin');
+document.getElementById('auth-stu-err').classList.add('hidden');
+document.getElementById('auth-adm-err').classList.add('hidden');
+if (mode==='student') setTimeout(()=>document.getElementById('stu-firstname').focus(),50);
+if (mode==='admin') setTimeout(()=>document.getElementById('adm-login').focus(),50);
+}
+function loginStudent() {
+const fn = document.getElementById('stu-firstname').value.trim();
+const ln = document.getElementById('stu-lastname').value.trim();
+if (!fn||!ln) { showErr('auth-stu-err','Prénom et nom requis.'); return; }
+const user = {role:'student',firstName:fn,lastName:ln,id:ln.toLowerCase()+'_'+fn.toLowerCase()+'_'+Date.now()};
+saveUser(user); initApp(user);
+}
+function loginAdmin() {
+const l=document.getElementById('adm-login').value;
+const p=document.getElementById('adm-pwd').value;
+if (l===ADMIN_LOGIN&&p===ADMIN_PASSWORD) {
+const user={role:'admin',firstName:'Admin',lastName:'',id:'admin'};
+saveUser(user); initApp(user);
+} else { showErr('auth-adm-err','Identifiants incorrects.'); }
+}
+function showErr(id,msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.remove('hidden'); }
+function logout() { saveUser(null); currentUser=null; location.reload(); }
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+function initApp(user) {
+currentUser = user;
+exams = loadExams();
+if (exams.length===0) { exams = [DEMO_EXAM]; saveExamsLS(exams); }
+document.getElementById('auth-screen').classList.add('hidden');
+document.getElementById('main-app').classList.remove('hidden');
+document.getElementById('header-username').textContent = user.firstName+(user.lastName?' '+user.lastName:'');
+document.getElementById('header-role').textContent = user.role==='admin'?'Administrateur':'Étudiant';
+if (user.role==='admin') {
+document.querySelector('[data-tab=creator]').classList.remove('hidden');
+document.querySelector('[data-tab=dashboard]').classList.remove('hidden');
+}
+document.getElementById('student-greeting').textContent = `Bonjour, ${user.firstName} 👋`;
+renderExamList();
+if (user.role==='admin') renderCreatorExamList();
+}
+
+// ══════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════
+function switchTab(tab) {
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+document.getElementById('tab-'+tab).classList.add('active');
+document.querySelector(`[data-tab=${tab}]`).classList.add('active');
+if (tab==='dashboard') renderDashboard();
+if (tab==='creator') renderCreatorExamList();
+}
+
+// ══════════════════════════════════════════════════════
+// STUDENT EXAM LIST
+// ══════════════════════════════════════════════════════
+function renderExamList() {
+const el = document.getElementById('exam-list');
+if (!exams.length) { el.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>Aucune épreuve disponible.</p></div>`; return; }
+el.innerHTML = exams.map(ex=>`
+<div class="card" style="margin-bottom:12px">
+<div class="flex items-center gap-12">
+<div style="flex:1;min-width:0">
+<div style="font-weight:800;font-size:1rem;margin-bottom:4px">${esc(ex.title)}</div>
+${ex.description?`<div style="color:var(--text3);font-size:.82rem;margin-bottom:8px">${esc(ex.description)}</div>`:''}
+<div class="flex gap-8 items-center" style="flex-wrap:wrap">
+${ex.dossiers.map(d=>`<span class="badge badge-${kindBadge(d.kind)}">${d.kind}</span>`).join('')}
+${ex.timerMinutes>0?`<span style="font-size:.75rem;color:var(--text3)">⏱ ${ex.timerMinutes} min</span>`:''}
+<span style="font-size:.72rem;color:var(--text3)">${ex.dossiers.length} dossier(s) · ${ex.dossiers.reduce((s,d)=>s+d.questions.length,0)} questions</span>
+</div>
+</div>
+<button class="btn btn-primary" onclick="startSession('${ex.id}')">Commencer →</button>
+</div>
+</div>`).join('');
+}
+
+function kindBadge(k) { return {DP:'indigo',KFP:'purple',QI:'teal'}[k]||'gray'; }
+function typeBadge(t) { return {QCM:'blue',QRU:'green',QRP:'purple',QROC:'amber'}[t]||'gray'; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ══════════════════════════════════════════════════════
+// SESSION
+// ══════════════════════════════════════════════════════
+function startSession(examId) {
+sessionExam = exams.find(e=>e.id===examId);
+if (!sessionExam) return;
+sessionAnswers = {}; sessionRevealedIdx = {}; sessionSubmittedMap = {}; sessionDoneMap = {};
+sessionActiveDossier = 0; sessionForceSubmit = false;
+sessionExam.dossiers.forEach((_,i)=>{ sessionRevealedIdx[i]=0; sessionSubmittedMap[i]={}; sessionAnswers[i]={}; });
+document.getElementById('exam-list-view').classList.add('hidden');
+document.getElementById('results-view').classList.add('hidden');
+document.getElementById('session-view').classList.remove('hidden');
+renderSession();
+if (sessionExam.timerMinutes>0) startTimer(sessionExam.timerMinutes*60);
+}
+
+function startTimer(seconds) {
+clearInterval(timerInterval);
+timerRemaining = seconds;
+updateTimerUI();
+timerInterval = setInterval(()=>{
+timerRemaining--;
+updateTimerUI();
+if (timerRemaining<=0) { clearInterval(timerInterval); forceFinish(); }
+},1000);
+}
+
+function updateTimerUI() {
+const el = document.getElementById('session-timer');
+if (!el) return;
+const m=Math.floor(timerRemaining/60), s=timerRemaining%60;
+el.textContent=`⏱ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+const pct = timerRemaining/(sessionExam.timerMinutes*60);
+el.className='timer'+(pct<0.2?' urgent':pct<0.4?' warning':'');
+}
+
+function forceFinish() {
+sessionForceSubmit = true;
+sessionExam.dossiers.forEach((_,i)=>{
+if (sessionExam.dossiers[i].kind!=='QI') {
+const qs = sessionExam.dossiers[i].questions;
+qs.forEach((_,qi)=>{ sessionSubmittedMap[i][qi]=true; });
+sessionRevealedIdx[i] = qs.length-1;
+sessionDoneMap[i]=true;
+}
+});
+finishSession();
+}
+
+function sessionAnswered(di, qi) {
+const q = sessionExam.dossiers[di].questions[qi];
+const a = sessionAnswers[di]?.[qi];
+if (!a) return false;
+if (q.type==='QROC') return typeof a==='string'&&a.trim().length>0;
+return Array.isArray(a)&&a.length>0;
+}
+
+function totalAnswered() {
+let t=0;
+sessionExam.dossiers.forEach((d,di)=>{
+d.questions.forEach((_,qi)=>{ if(sessionAnswered(di,qi)) t++; });
+});
+return t;
+}
+function totalQuestions() { return sessionExam.dossiers.reduce((s,d)=>s+d.questions.length,0); }
+
+function dossierAnsweredCount(di) {
+const d=sessionExam.dossiers[di];
+return d.questions.filter((_,qi)=>sessionAnswered(di,qi)).length;
+}
+
+function renderSession() {
+const sv = document.getElementById('session-view');
+const total=totalQuestions(), answered=totalAnswered();
+const pct=total>0?Math.round(answered/total*100):0;
+const timerHtml = sessionExam.timerMinutes>0?`<div class="timer" id="session-timer">⏱ --:--</div>`:'';
+
+sv.innerHTML=`
+<div class="session-layout">
+<aside class="session-sidebar" id="session-sidebar"></aside>
+<div class="session-main">
+<div class="session-topbar">
+<div class="progress-wrap">
+<div class="progress-labels"><span>Progression</span><span id="prog-label">${answered}/${total} (${pct}%)</span></div>
+<div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-fill" style="width:${pct}%"></div></div>
+</div>
+${timerHtml}
+<button class="btn btn-primary btn-sm" onclick="finishSession()">Terminer →</button>
+</div>
+<div class="session-content" id="session-content"></div>
+</div>
+</div>`;
+
+renderSidebar();
+renderActiveDossier();
+if (sessionExam.timerMinutes>0) {
+// re-attach timer display to already-running interval
+updateTimerUI();
+}
+}
+
+function renderSidebar() {
+const sb = document.getElementById('session-sidebar');
+if (!sb) return;
+sb.innerHTML=`<div class="sidebar-title">Dossiers</div>`+sessionExam.dossiers.map((d,i)=>{
+const done=dossierAnsweredCount(i), total=d.questions.length;
+const pct=total>0?Math.round(done/total*100):0;
+const isActive=i===sessionActiveDossier;
+const kindCls=d.kind.toLowerCase();
+return `<button class="sidebar-btn${isActive?' active':''}" onclick="switchDossier(${i})">
+<div class="flex items-center gap-8">
+<span class="sidebar-kind ${isActive?'':kindCls}">${d.kind}</span>
+${done===total&&total>0?`<span class="sidebar-check">✓</span>`:''}
+</div>
+<span class="sidebar-dos-title">${esc(d.title)||'Dossier '+(i+1)}</span>
+<div class="sidebar-mini-progress">
+<div class="sidebar-mini-bar"><div class="sidebar-mini-fill" style="width:${pct}%"></div></div>
+<span class="sidebar-mini-count">${done}/${total}</span>
+</div>
+</button>`;
+}).join('');
+}
+
+function switchDossier(i) {
+sessionActiveDossier=i;
+renderSidebar();
+renderActiveDossier();
+}
+
+function renderActiveDossier() {
+const sc = document.getElementById('session-content');
+if (!sc) return;
+const d = sessionExam.dossiers[sessionActiveDossier];
+const di = sessionActiveDossier;
+
+let html=`<div class="dos-card">
+<div class="dos-header ${d.kind.toLowerCase()}">
+<span class="dos-kind">${d.kind}</span>
+<span class="dos-title-text">${esc(d.title)||'Dossier '+(di+1)}</span>
+<span class="dos-qcount">${d.kind==='QI'?d.questions.length+' q.':''}</span>
+</div>
+<div class="dos-body">`;
+
+if (d.context) html+=`<div class="context-box"><div class="context-label">Contexte clinique</div><div class="context-text">${esc(d.context)}</div>${d.contextImageUrl?`<img src="${esc(d.contextImageUrl)}" style="max-height:200px;margin-top:10px">`:''}
+</div>`;
+
+if (d.kind==='QI') {
+html+=`<div class="qi-hint">💡 Ces questions sont modifiables librement jusqu'à la fin de l'épreuve.</div>`;
+d.questions.forEach((q,qi)=>{ html+=renderStudentQuestion(q,qi,di,false,false,null); });
+} else {
+const revealed=sessionRevealedIdx[di];
+const done=sessionDoneMap[di];
+// Show validated (locked, not result mode)
+for (let i=0;i<revealed;i++) {
+html+=renderStudentQuestion(d.questions[i],i,di,true,false,null);
+}
+if (!done) {
+html+=renderStudentQuestion(d.questions[revealed],revealed,di,false,false,null);
+html+=`<div style="display:flex;justify-content:flex-end;margin-top:12px">
+<button class="btn btn-primary" id="validate-btn" onclick="validateQuestion(${di})" ${sessionAnswered(di,revealed)?'':'disabled'}>
+${revealed<d.questions.length-1?'Valider et continuer →':'Terminer ce dossier'}
+</button></div>`;
+} else {
+html+=`<div class="done-banner">✓ Dossier terminé</div>`;
+}
+}
+
+html+=`</div></div>`;
+sc.innerHTML=html;
+}
+
+function renderStudentQuestion(q, qi, di, locked, showResult, score) {
+const answer = sessionAnswers[di]?.[qi];
+let html=`<div class="q-student${locked?' locked':''}" id="qblock-${di}-${qi}">
+<div class="q-student-head">
+<div class="q-num-circle">${qi+1}</div>
+<div style="flex:1">
+<div class="q-meta">
+<span class="badge badge-${typeBadge(q.type)}">${q.type}</span>
+${q.type==='QRP'?`<span style="font-size:.75rem;color:var(--purple)">${q.qrpExpectedCount} vraie(s) sur ${q.propositions.length}</span>`:''}
+${q.type==='QCM'?`<span style="font-size:.75rem;color:#1d4ed8">Plusieurs réponses</span>`:''}
+${q.type==='QRU'?`<span style="font-size:.75rem;color:var(--emerald)">Une seule réponse</span>`:''}
+${locked&&!showResult?`<span class="q-lock-label">🔒 Validée</span>`:''}
+</div>
+<div class="q-text">${esc(q.text)}</div>
+${q.imageUrl?`<img src="${esc(q.imageUrl)}" style="max-height:180px;margin-top:8px">`:''}
+${q.videoUrl?`<video src="${esc(q.videoUrl)}" controls style="max-height:180px;width:100%;margin-top:8px"></video>`:''}
+</div>
+</div>
+<div class="q-body">`;
+
+if (q.type==='QROC') {
+const val=typeof answer==='string'?answer:'';
+let cls='qroc-input';
+if(showResult) cls+=score===1?' res-ok':' res-wrong';
+html+=`<input type="text" class="${cls}" value="${esc(val)}" placeholder="${locked?'—':'Votre réponse…'}" ${locked?'disabled':''}
+oninput="setQROCAnswer(${di},${qi},this.value)">`;
+if(showResult&&score<1) html+=`<div class="qroc-expected">Attendu : ${esc((q.correctTexts||[]).filter(t=>t.trim()).join(', '))}</div>`;
+if(showResult&&score===1) {
+const g=(val||'').trim().toLowerCase();
+const match=(q.correctTexts||[]).find(t=>levenshtein(g,t.trim().toLowerCase())<=2)||'';
+const hasTypo = match && levenshtein(g,match.trim().toLowerCase())>0;
+html+=`<div class="qroc-ok-msg">✓ Bonne réponse${hasTypo?' (faute tolérée)':''}</div>`;
+}
+} else {
+q.propositions.forEach((p,i)=>{
+const chosen=(Array.isArray(answer)&&answer.includes(i));
+const isCorrect=q.correctIndices.includes(i);
+let cls='prop-option';
+if(locked||showResult) cls+=' locked-opt';
+if(showResult){
+if(isCorrect&&chosen) cls+=' res-correct-chosen';
+else if(isCorrect&&!chosen) cls+=' res-correct-missing';
+else if(!isCorrect&&chosen) cls+=' res-wrong-chosen';
+else cls+=' res-neutral';
+} else if(chosen) cls+=' selected';
+const boxType=q.type==='QRU'?'radio':'';
+html+=`<div class="${cls}" ${!locked&&!showResult?`onclick="toggleAnswer(${di},${qi},${i},${q.type==='QRU'})"`:''}">
+<div class="prop-box ${boxType}${chosen?' checked':''}"></div>
+<span class="prop-label">${esc(p)}</span>
+${showResult&&isCorrect?`<span class="prop-correct-mark">✓</span>`:''}
+</div>`;
+});
+}
+
+html+=`</div>`; // q-body
+
+if(showResult) {
+const s=score??0;
+const cls=s===1?'perfect':s>0?'partial':'zero';
+html+=`<div class="q-score ${cls}">${s===1?'✓':s>0?'~':'✗'} ${Math.round(s*100)/100}/1</div>`;
+}
+
+html+=`</div>`; // q-student
+return html;
+}
+
+function toggleAnswer(di, qi, idx, single) {
+const q = sessionExam.dossiers[di].questions[qi];
+let ans = sessionAnswers[di]?.[qi];
+if (!Array.isArray(ans)) ans=[];
+if (single) { ans=[idx]; }
+else { ans=ans.includes(idx)?ans.filter(x=>x!==idx):[...ans,idx]; }
+sessionAnswers[di][qi]=ans;
+updateProgress();
+// re-render just the dossier (keeps focus area current)
+renderActiveDossier();
+renderSidebar();
+}
+
+function setQROCAnswer(di, qi, val) {
+sessionAnswers[di][qi]=val;
+updateProgress();
+updateValidateBtn(di, qi);
+renderSidebar();
+}
+
+function updateValidateBtn(di, qi) {
+const btn=document.getElementById('validate-btn');
+if(btn) btn.disabled=!sessionAnswered(di,qi);
+}
+
+function updateProgress() {
+const answered=totalAnswered(), total=totalQuestions();
+const pct=total>0?Math.round(answered/total*100):0;
+const lbl=document.getElementById('prog-label'); if(lbl) lbl.textContent=`${answered}/${total} (${pct}%)`;
+const fill=document.getElementById('prog-fill'); if(fill) fill.style.width=pct+'%';
+}
+
+function validateQuestion(di) {
+const d=sessionExam.dossiers[di];
+const qi=sessionRevealedIdx[di];
+sessionSubmittedMap[di][qi]=true;
+if(qi<d.questions.length-1) {
+sessionRevealedIdx[di]=qi+1;
+} else {
+sessionDoneMap[di]=true;
+}
+renderActiveDossier();
+renderSidebar();
+}
+
+function finishSession() {
+clearInterval(timerInterval);
+document.getElementById('session-view').classList.add('hidden');
+const rv=document.getElementById('results-view');
+rv.classList.remove('hidden');
+rv.innerHTML=buildResultsHTML();
+saveSessionResult();
+}
+
+function buildResultsHTML() {
+let total=0, max=0;
+sessionExam.dossiers.forEach((d,di)=>{
+d.questions.forEach((q,qi)=>{ total+=computeScore(q,sessionAnswers[di]?.[qi]); max++; });
+});
+const pct=max>0?Math.round(total/max*100):0;
+const color=pct>=80?'emerald':pct>=60?'indigo':pct>=40?'amber':'rose';
+const barColor=pct>=80?'var(--emerald)':pct>=60?'var(--indigo)':pct>=40?'var(--amber)':'var(--rose)';
+
+let html=`<div class="results-hero">
+<div class="results-name">${esc(currentUser.firstName)} ${esc(currentUser.lastName)}</div>
+<div class="results-exam-title">${esc(sessionExam.title)}</div>
+<div class="results-score color-${color}">${Math.round(total*100)/100}<span>/${max}</span></div>
+<div class="results-pct color-${color}">${pct}%</div>
+<div class="results-bar-wrap"><div class="results-bar" style="width:${pct}%;background:${barColor}"></div></div>
+<div class="results-saved">✓ Résultat enregistré</div>
+</div>`;
+
+sessionExam.dossiers.forEach((d,di)=>{
+let dTotal=0;
+d.questions.forEach((q,qi)=>dTotal+=computeScore(q,sessionAnswers[di]?.[qi]));
+html+=`<div class="dos-card" style="margin-bottom:12px">
+<div class="dos-header ${d.kind.toLowerCase()}">
+<span class="dos-kind">${d.kind}</span>
+<span class="dos-title-text">${esc(d.title)||'Dossier '+(di+1)}</span>
+<span class="dos-qcount">${Math.round(dTotal*100)/100}/${d.questions.length}</span>
+</div>
+<div class="dos-body">`;
+d.questions.forEach((q,qi)=>{
+const s=computeScore(q,sessionAnswers[di]?.[qi]);
+html+=renderStudentQuestion(q,qi,di,true,true,s);
+});
+html+=`</div></div>`;
+});
+
+html+=`<div style="text-align:center;padding:24px 0">
+<button class="btn btn-secondary" onclick="backToList()">← Retour aux épreuves</button>
+</div>`;
+return html;
+}
+
+function saveSessionResult() {
+const total = sessionExam.dossiers.reduce((s,d,di)=>s+d.questions.reduce((ss,q,qi)=>ss+computeScore(q,sessionAnswers[di]?.[qi]),0),0);
+const max = sessionExam.dossiers.reduce((s,d)=>s+d.questions.length,0);
+const pct = max>0?Math.round(total/max*100):0;
+const r = {
+id:uid(), userId:currentUser.id, firstName:currentUser.firstName, lastName:currentUser.lastName,
+examId:sessionExam.id, examTitle:sessionExam.title,
+score:Math.round(total*100)/100, max, pct, date:new Date().toISOString()
+};
+const results=loadResults(); saveResults([...results,r]);
+}
+
+function backToList() {
+document.getElementById('results-view').classList.add('hidden');
+document.getElementById('exam-list-view').classList.remove('hidden');
+renderExamList();
+}
+
+// ══════════════════════════════════════════════════════
+// CREATOR
+// ══════════════════════════════════════════════════════
+let creatorDossierState=[]; // [{id,kind,title,context,contextImageUrl,questions:[]}]
+
+function addDossier(kind) {
+const d={id:uid(),kind,title:'',context:'',contextImageUrl:'',questions:[newQuestion('QCM')]};
+creatorDossierState.push(d);
+renderCreatorDossiers();
+}
+
+function newQuestion(type) {
+return {id:uid(),type,text:'',imageUrl:'',videoUrl:'',propositions:['',''],correctIndices:[],correctTexts:[],qrpExpectedCount:2};
+}
+
+function renderCreatorDossiers() {
+const container=document.getElementById('creator-dossiers');
+container.innerHTML=creatorDossierState.map((d,di)=>buildDossierEditorHTML(d,di)).join('');
+}
+
+function buildDossierEditorHTML(d,di) {
+const kindCls=d.kind.toLowerCase();
+const label={DP:'Dossier Progressif',KFP:'Key Feature Problem',QI:'Questions Isolées'}[d.kind];
+let html=`<div class="dossier-block" id="dos-block-${d.id}">
+<div class="dossier-header ${kindCls}" onclick="toggleDossierBody('${d.id}')">
+<span class="dossier-kind-label">${d.kind} ${di+1}</span>
+<input type="text" value="${esc(d.title)}" placeholder="Titre — ${label}…" onclick="event.stopPropagation()" oninput="updateDossierField('${d.id}','title',this.value)" style="max-width:300px">
+<span class="dossier-count">${d.questions.length} q.</span>
+<span class="dossier-toggle" id="dtog-${d.id}">▼</span>
+<button class="dossier-del" onclick="event.stopPropagation();deleteDossier('${d.id}')">✕</button>
+</div>
+<div class="dossier-body open" id="dbody-${d.id}">`;
+
+if(d.kind!=='QI') {
+html+=`<div class="form-group"><label class="form-label">Contexte clinique</label>
+<textarea rows="3" placeholder="Texte du cas clinique…" oninput="updateDossierField('${d.id}','context',this.value)">${esc(d.context)}</textarea>
+<input type="text" value="${esc(d.contextImageUrl)}" placeholder="URL image du contexte (optionnel)" style="margin-top:6px" oninput="updateDossierField('${d.id}','contextImageUrl',this.value)"></div>`;
+} else {
+html+=`<div class="qi-hint" style="margin-bottom:12px">💡 Questions librement modifiables jusqu'à la fin de l'épreuve.</div>`;
+}
+
+html+=`<span class="section-label">Questions</span>`;
+html+=d.questions.map((q,qi)=>buildQuestionEditorHTML(d.id,di,q,qi)).join('');
+html+=`<div class="flex gap-8 mt-12" style="flex-wrap:wrap">
+${['QCM','QRU','QRP','QROC'].map(t=>`<button class="btn btn-secondary btn-sm" onclick="addQuestion('${d.id}','${t}')">+ ${t}</button>`).join('')}
+</div>`;
+html+=`</div></div>`;
+return html;
+}
+
+function buildQuestionEditorHTML(did, di, q, qi) {
+const noCorrect = q.type!=='QROC' && q.correctIndices.length===0;
+const noTexts = q.type==='QROC' && !(q.correctTexts||[]).filter(t=>t.trim()).length;
+const warn = noCorrect||noTexts;
+let html=`<div class="q-editor${warn?' warn-border':''}" id="qed-${q.id}">
+<div class="q-editor-head">
+<span class="q-num">Q${qi+1}</span>
+<select class="q-type-sel" onchange="changeQuestionType('${did}','${q.id}',this.value)">
+${['QCM','QRU','QRP','QROC'].map(t=>`<option${q.type===t?' selected':''}>${t}</option>`).join('')}
+</select>
+<span class="badge badge-${typeBadge(q.type)}">${q.type}</span>
+${q.type==='QRP'?`<span class="qrp-count">Vraies attendues:<input type="number" min="1" max="12" value="${q.qrpExpectedCount}" style="width:52px" oninput="updateQField('${did}','${q.id}','qrpExpectedCount',parseInt(this.value)||1)"></span>`:''}
+${warn?`<span class="q-warn">⚠ Aucune réponse définie</span>`:''}
+<button class="q-del" onclick="deleteQuestion('${did}','${q.id}')">✕</button>
+</div>
+<div class="form-group mb-8">
+<textarea rows="2" placeholder="Texte de la question…" oninput="updateQField('${did}','${q.id}','text',this.value)">${esc(q.text)}</textarea>
+</div>
+<div class="form-row mb-8">
+<input type="text" value="${esc(q.imageUrl)}" placeholder="URL image (optionnel)" oninput="updateQField('${did}','${q.id}','imageUrl',this.value)">
+<input type="text" value="${esc(q.videoUrl)}" placeholder="URL vidéo (optionnel)" oninput="updateQField('${did}','${q.id}','videoUrl',this.value)">
+</div>`;
+
+if(q.type==='QROC'){
+html+=`<span class="section-label">Réponses acceptées (une par ligne, tolérance ≤2 fautes)</span>
+<textarea rows="3" placeholder="Réponse 1&#10;Réponse 2&#10;…" oninput="updateQCorrectTexts('${did}','${q.id}',this.value)">${esc((q.correctTexts||[]).join('\n'))}</textarea>`;
+} else {
+html+=`<span class="section-label">Propositions — ${q.type==='QRU'?'une seule bonne réponse':'cochez les bonnes réponses'}${q.type==='QRP'?` (${q.qrpExpectedCount} vraies attendues)`:''}</span>`;
+q.propositions.forEach((p,pi)=>{
+const checked=q.correctIndices.includes(pi);
+const inputType=q.type==='QRU'?'radio':'checkbox';
+html+=`<div class="prop-row">
+<input type="${inputType}" name="correct-${q.id}" ${checked?'checked':''} class="prop-check"
+onchange="toggleCorrect('${did}','${q.id}',${pi},${q.type==='QRU'})">
+<input type="text" value="${esc(p)}" placeholder="Proposition ${pi+1}" oninput="updateProposition('${did}','${q.id}',${pi},this.value)">
+${q.propositions.length>2?`<button class="prop-del" onclick="removeProposition('${did}','${q.id}',${pi})">✕</button>`:''}
+</div>`;
+});
+const max=q.type==='QRP'?12:5;
+if(q.propositions.length<max) html+=`<button class="btn btn-ghost btn-sm add-prop-btn" onclick="addProposition('${did}','${q.id}')">+ Proposition</button>`;
+}
+html+=`</div>`;
+return html;
+}
+
+// Creator state helpers
+function getDossier(did) { return creatorDossierState.find(d=>d.id===did); }
+function getQuestion(did,qid) { const d=getDossier(did); return d?d.questions.find(q=>q.id===qid):null; }
+
+function toggleDossierBody(did) {
+const body=document.getElementById('dbody-'+did);
+const tog=document.getElementById('dtog-'+did);
+const open=body.classList.toggle('open');
+tog.textContent=open?'▼':'▶';
+}
+function updateDossierField(did,field,val) { const d=getDossier(did); if(d) d[field]=val; }
+function deleteDossier(did) {
+creatorDossierState=creatorDossierState.filter(d=>d.id!==did);
+renderCreatorDossiers();
+}
+function addQuestion(did,type) {
+const d=getDossier(did); if(!d) return;
+d.questions.push(newQuestion(type));
+renderCreatorDossiers();
+}
+function deleteQuestion(did,qid) {
+const d=getDossier(did); if(!d) return;
+d.questions=d.questions.filter(q=>q.id!==qid);
+renderCreatorDossiers();
+}
+function updateQField(did,qid,field,val) {
+const q=getQuestion(did,qid); if(q) q[field]=val;
+// refresh warning badge only
+const ed=document.getElementById('qed-'+qid);
+if(ed){
+const noC=q.type!=='QROC'&&q.correctIndices.length===0;
+const noT=q.type==='QROC'&&!(q.correctTexts||[]).filter(t=>t.trim()).length;
+ed.classList.toggle('warn-border',noC||noT);
+}
+}
+function updateQCorrectTexts(did,qid,val) {
+const q=getQuestion(did,qid); if(q) q.correctTexts=val.split('\n');
+updateQField(did,qid,'correctTexts',q.correctTexts);
+}
+function changeQuestionType(did,qid,type) {
+const q=getQuestion(did,qid); if(!q) return;
+q.type=type; q.correctIndices=[]; q.correctTexts=[];
+renderCreatorDossiers();
+}
+function toggleCorrect(did,qid,idx,single) {
+const q=getQuestion(did,qid); if(!q) return;
+if(single){ q.correctIndices=[idx]; }
+else { q.correctIndices=q.correctIndices.includes(idx)?q.correctIndices.filter(x=>x!==idx):[...q.correctIndices,idx]; }
+const ed=document.getElementById('qed-'+qid);
+if(ed) ed.classList.toggle('warn-border',q.correctIndices.length===0);
+}
+function updateProposition(did,qid,pi,val) {
+const q=getQuestion(did,qid); if(q) q.propositions[pi]=val;
+}
+function addProposition(did,qid) {
+const q=getQuestion(did,qid); if(!q) return;
+const max=q.type==='QRP'?12:5;
+if(q.propositions.length<max){ q.propositions.push(''); renderCreatorDossiers(); }
+}
+function removeProposition(did,qid,pi) {
+const q=getQuestion(did,qid); if(!q) return;
+q.propositions=q.propositions.filter((_,i)=>i!==pi);
+q.correctIndices=q.correctIndices.filter(x=>x!==pi).map(x=>x>pi?x-1:x);
+renderCreatorDossiers();
+}
+
+function saveExam() {
+const title=document.getElementById('c-title').value.trim();
+if(!title||creatorDossierState.length===0) {
+alert('Donnez un titre et ajoutez au moins un dossier.'); return;
+}
+const exam={
+id:editingExamId||uid(),
+title,
+description:document.getElementById('c-desc').value.trim(),
+timerMinutes:parseInt(document.getElementById('c-timer').value)||0,
+dossiers:JSON.parse(JSON.stringify(creatorDossierState))
+};
+const idx=exams.findIndex(e=>e.id===exam.id);
+if(idx>=0) exams[idx]=exam; else exams.push(exam);
+saveExamsLS(exams);
+// Reset
+editingExamId=null; creatorDossierState=[];
+document.getElementById('c-title').value='';
+document.getElementById('c-desc').value='';
+document.getElementById('c-timer').value='0';
+document.getElementById('creator-title-label').textContent='Nouvelle épreuve';
+renderCreatorDossiers();
+renderCreatorExamList();
+const msg=document.getElementById('save-msg');
+msg.textContent='✓ Épreuve enregistrée !'; msg.classList.remove('hidden');
+setTimeout(()=>msg.classList.add('hidden'),2500);
+}
+
+function renderCreatorExamList() {
+const el=document.getElementById('creator-exam-list');
+if(!exams.length){ el.innerHTML=''; return; }
+el.innerHTML=`<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Épreuves enregistrées (${exams.length})</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+<button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ Exporter JSON</button>
+<label class="btn btn-secondary btn-sm" style="cursor:pointer">⬆ Importer JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
+</div>
+${exams.map(ex=>`<div class="flex items-center gap-12" style="padding:10px 0;border-top:1px solid var(--gray-b)">
+<div style="flex:1;min-width:0">
+<div style="font-weight:600;font-size:.88rem">${esc(ex.title)}</div>
+<div style="font-size:.72rem;color:var(--text3)">${ex.dossiers.length} dossier(s) · ${ex.dossiers.reduce((s,d)=>s+d.questions.length,0)} q.${ex.timerMinutes>0?' · ⏱ '+ex.timerMinutes+'min':''}</div>
+</div>
+<button class="btn btn-secondary btn-sm" onclick="editExam('${ex.id}')">Éditer</button>
+<button class="btn btn-danger btn-sm" onclick="deleteExam('${ex.id}')">Suppr.</button>
+</div>`).join('')}`;
+}
+
+function editExam(id) {
+const ex=exams.find(e=>e.id===id); if(!ex) return;
+editingExamId=id;
+document.getElementById('c-title').value=ex.title;
+document.getElementById('c-desc').value=ex.description||'';
+document.getElementById('c-timer').value=ex.timerMinutes||0;
+document.getElementById('creator-title-label').textContent="Modifier l'épreuve";
+creatorDossierState=JSON.parse(JSON.stringify(ex.dossiers));
+renderCreatorDossiers();
+document.getElementById('creator-form-card').scrollIntoView({behavior:'smooth'});
+}
+
+function deleteExam(id) {
+if(!confirm('Supprimer cette épreuve ?')) return;
+exams=exams.filter(e=>e.id!==id); saveExamsLS(exams);
+renderCreatorExamList(); renderExamList();
+}
+
+function exportJSON() {
+const blob=new Blob([JSON.stringify(exams,null,2)],{type:'application/json'});
+const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='medexam_epreuves.json'; a.click();
+}
+function importJSON(e) {
+const f=e.target.files[0]; if(!f) return;
+const r=new FileReader();
+r.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); if(Array.isArray(d)){ d.forEach(ex=>{ if(!exams.find(e=>e.id===ex.id)) exams.push(ex); }); saveExamsLS(exams); renderCreatorExamList(); renderExamList(); } }catch{ alert('Fichier invalide.'); } };
+r.readAsText(f); e.target.value='';
+}
+
+// ══════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════
+function renderDashboard() {
+const results=loadResults();
+document.getElementById('dash-count').textContent=results.length+' résultat(s) enregistré(s)';
+const el=document.getElementById('dashboard-content');
+if(!results.length){ el.innerHTML=`<div class="empty-state"><div class="icon">📊</div><p>Aucun résultat enregistré.</p><p style="font-size:.82rem;margin-top:4px">Les scores apparaîtront ici après les premières épreuves.</p></div>`; return; }
+
+// Group by exam
+const byExam={};
+results.forEach(r=>{ if(!byExam[r.examId]) byExam[r.examId]={title:r.examTitle,entries:[]}; byExam[r.examId].entries.push(r); });
+
+el.innerHTML=Object.entries(byExam).map(([eid,{title,entries}])=>{
+const ranked=[...entries].sort((a,b)=>b.pct-a.pct);
+const medals=['🥇','🥈','🥉'];
+return `<div class="ranking-card">
+<div class="ranking-header"><h3>${esc(title)}</h3><small>${entries.length} passage(s)</small></div>
+${ranked.map((r,i)=>{
+const color=r.pct>=80?'var(--emerald)':r.pct>=60?'var(--indigo)':r.pct>=40?'var(--amber)':'var(--rose)';
+return `<div class="rank-row${i<3?' top':''}">
+<span class="rank-medal">${medals[i]||i+1+'.'}</span>
+<div class="rank-info"><div class="rank-name">${esc(r.firstName)} ${esc(r.lastName)}</div><div class="rank-date">${new Date(r.date).toLocaleString('fr-FR')}</div></div>
+<div class="rank-score-wrap">
+<div class="rank-pct" style="color:${color}">${r.pct}%</div>
+<div class="rank-pts">${r.score}/${r.max}</div>
+<div class="rank-bar-wrap"><div class="rank-bar" style="width:${r.pct}%;background:${color}"></div></div>
+</div>
+<button class="rank-del" onclick="deleteResult('${r.id}')" title="Supprimer">✕</button>
+</div>`;
+}).join('')}
+</div>`;
+}).join('');
+}
+
+function deleteResult(id) {
+const r=loadResults().filter(r=>r.id!==id); saveResults(r); renderDashboard();
+}
+function clearAllResults() {
+if(!confirm('Supprimer TOUS les résultats ?')) return;
+saveResults([]); renderDashboard();
+}
+
+function exportCSV() {
+const results=loadResults();
+const rows=[['Prénom','Nom','Épreuve','Score','Sur','Pourcentage','Date'],...results.map(r=>[r.firstName,r.lastName,r.examTitle,r.score,r.max,r.pct+'%',new Date(r.date).toLocaleString('fr-FR')])];
+const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='resultats_medexam.csv'; a.click();
+}
+
+// ══════════════════════════════════════════════════════
+// DEMO DATA
+// ══════════════════════════════════════════════════════
+const DEMO_EXAM = {
+id:"demo",title:"Démonstration — Cardiologie",description:"Épreuve exemple avec toutes les modalités et un timer de 5 min.",timerMinutes:5,
+dossiers:[
+{id:"dp1",kind:"DP",title:"Dossier 1 — Douleur thoracique",
+context:"M. Martin, 58 ans, consulte aux urgences pour une douleur thoracique rétrosternale constrictive survenue au repos irradiant dans le bras gauche depuis 2h. Diabétique et hypertendu.",contextImageUrl:"",
+questions:[
+{id:"q1",type:"QCM",text:"Quels éléments du tableau clinique orientent vers un SCA ?",imageUrl:"",videoUrl:"",propositions:["Douleur rétrosternale constrictive","Irradiation bras gauche","Survenue au repos","Durée > 20 min","Contexte vasculaire (diabète, HTA)"],correctIndices:[0,1,2,3,4],correctTexts:[],qrpExpectedCount:2},
+{id:"q2",type:"QRU",text:"Quel examen est à réaliser en urgence absolue en première intention ?",imageUrl:"",videoUrl:"",propositions:["Radiographie thoracique","ECG 12 dérivations","Échocardiographie","Scanner thoracique","Bilan biologique seul"],correctIndices:[1],correctTexts:[],qrpExpectedCount:1},
+{id:"q3",type:"QROC",text:"Quel score de risque cardiovasculaire à 10 ans est utilisé en Europe ?",imageUrl:"",videoUrl:"",propositions:[],correctIndices:[],correctTexts:["SCORE","score"],qrpExpectedCount:1},
+]},
+{id:"kfp1",kind:"KFP",title:"KFP — Traitement SCA ST+",context:"ECG : sus-décalage du segment ST en V1-V4. Le diagnostic de SCA ST+ est posé.",contextImageUrl:"",
+questions:[
+{id:"q4",type:"QRP",text:"Parmi les mesures suivantes, lesquelles sont indiquées dans les premières heures ? (6 réponses attendues sur 12)",imageUrl:"",videoUrl:"",
+propositions:["Aspirine 250mg","Héparine NF IV","Inhibiteur P2Y12 (ticagrélor/prasugrel)","Bêtabloquant IV systématique","Coronarographie en urgence (< 120 min)","Fibrinolyse si délai > 120 min","Inhibiteur calcique en urgence","Statine à forte dose","O2 si SpO2 < 90%","Morphine si douleur persistante","Défibrillateur à portée","IEC systématique dès H1"],
+correctIndices:[0,1,2,4,5,8],correctTexts:[],qrpExpectedCount:6},
+]},
+{id:"qi1",kind:"QI",title:"Questions isolées — Pharmacologie",context:"",contextImageUrl:"",
+questions:[
+{id:"q5",type:"QRU",text:"À quelle heure après le début de la douleur dose-t-on la troponine pour exclure un SCA selon les recommandations ESC ?",imageUrl:"",videoUrl:"",propositions:["1h","3h","6h","12h","24h"],correctIndices:[2],correctTexts:[],qrpExpectedCount:1},
+{id:"q6",type:"QROC",text:"Quel est l'antidote de l'héparine non fractionnée ?",imageUrl:"",videoUrl:"",propositions:[],correctIndices:[],correctTexts:["sulfate de protamine","protamine","sulfate de protammine"],qrpExpectedCount:1},
+]},
+]
+};
+
+// ══════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════
+(function() {
+const user = loadUser();
+if (user) { initApp(user); }
+document.getElementById('stu-lastname').addEventListener('keydown', e=>{ if(e.key==='Enter') loginStudent(); });
+document.getElementById('stu-firstname').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('stu-lastname').focus(); });
+})();
+</script>
+</body>
+</html>
